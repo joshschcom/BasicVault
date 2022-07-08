@@ -4,15 +4,17 @@ pragma solidity ^0.8.8;
 
 import "./PriceConverter.sol";
 
+error NotOwner();   
+
 contract FundMe {
     using PriceConverter for uint256;
    
-    uint256 public minimumUsd = 50 * 1e18; // 1 * 10 ** 18
+    uint256 public constant MINIMUM_USD = 50 * 1e18; // 1 * 10 ** 18
 
     address[] public funders;
     mapping(address => uint256) public addressToAmountFunded;
 
-    address public owner;
+    address public immutable owner;
 
     constructor(){
         owner = msg.sender;
@@ -21,7 +23,7 @@ contract FundMe {
     function fund() public payable {
         // Want to be able to set a minimum fund amount in Usd
         // How do we send ETH to this contract?
-        require(msg.value.getConversionRate() >= minimumUsd, "Didn`t send enough!"); //1e18 == 1 * 10 **18
+        require(msg.value.getConversionRate() >= MINIMUM_USD, "Didn`t send enough!"); //1e18 == 1 * 10 **18
         funders.push(msg.sender);
         addressToAmountFunded[msg.sender] += msg.value;   
     }
@@ -50,10 +52,20 @@ contract FundMe {
     }
 
     modifier onlyOwner {
-        require(msg.sender == owner, "Sender is not owner!");
+       // require(msg.sender == owner, "Sender is not owner!");
+       if(msg.sender != owner) { revert NotOwner(); }
         _;
     }
 
+    //What happens when someone sends us Ether without calling "fund()"?
 
-    //function withdrawal
+    receive() external payable {
+        fund();
+    }
+
+    fallback() external payable {
+        fund();
+    }
+
+
 }
